@@ -7,10 +7,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import uk.ac.ucl.model.Model;
 import uk.ac.ucl.model.ModelFactory;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * The ViewPatientListServlet handles HTTP requests for displaying the full list of patients.
@@ -38,25 +38,20 @@ public class ViewPatientListServlet extends HttpServlet
   public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException
   {
     try {
-      // 1. Get the singleton instance of the Model.
-      // The Model handles the actual data processing and data retrieval.
       Model model = ModelFactory.getModel();
-
-      // 2. Retrieve the list of patient names from the model.
-      List<String> patientNames = model.getPatientNames();
-
-      // 3. Add the data to the request object.
-      // This makes the 'patientNames' list accessible to the JSP page for rendering.
-      request.setAttribute("patientNames", patientNames);
-
-      // 4. Invoke the JSP for display.
-      // RequestDispatcher.forward() is used to send the request/response objects to another resource (JSP).
+      request.setAttribute("tableColumns", model.getTableColumns());
+      request.setAttribute("tableRows", model.getPatientTableRows());
       ServletContext context = getServletContext();
       RequestDispatcher dispatch = context.getRequestDispatcher("/patientList.jsp");
       dispatch.forward(request, response);
     } catch (IOException e) {
-      // 5. Exception Handling.
-      // If there is an issue loading the model or data, log the error and forward to a dedicated error page.
+      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      request.setAttribute("errorMessage", "Error loading patient data: " + e.getMessage());
+      ServletContext context = getServletContext();
+      RequestDispatcher dispatch = context.getRequestDispatcher("/error.jsp");
+      dispatch.forward(request, response);
+    } catch (RuntimeException e) {
+      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       request.setAttribute("errorMessage", "Error loading data: " + e.getMessage());
       ServletContext context = getServletContext();
       RequestDispatcher dispatch = context.getRequestDispatcher("/error.jsp");
