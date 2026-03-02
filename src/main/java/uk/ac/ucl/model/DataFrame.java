@@ -1,6 +1,10 @@
 package uk.ac.ucl.model;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 public class DataFrame {
@@ -66,6 +70,80 @@ public class DataFrame {
         findColumn(columnName).addRowValue(value);
     }
 
+    public boolean hasColumn(String columnName) {
+        String normalizedName = normalizeColumnName(columnName);
+        return columnsByName.containsKey(normalizedName);
+    }
+
+    public List<Map<String, String>> getRowsForColumns(List<String> selectedColumns) {
+        List<String> columnsToRender = normalizeSelectedColumns(selectedColumns);
+        int rowCount = getRowCount();
+        List<Map<String, String>> rows = new ArrayList<>(rowCount);
+
+        for (int row = 0; row < rowCount; row++) {
+            rows.add(getRowForColumns(row, columnsToRender));
+        }
+
+        return rows;
+    }
+
+    public Map<String, String> getRowForColumns(int row, List<String> selectedColumns) {
+        validateRowIndex(row);
+        List<String> columnsToRender = normalizeSelectedColumns(selectedColumns);
+        Map<String, String> rowData = new LinkedHashMap<>();
+        for (String columnName : columnsToRender) {
+            rowData.put(columnName, getValueOrEmpty(columnName, row));
+        }
+        return rowData;
+    }
+
+    public Map<String, String> getRecordDetails(int row) {
+        validateRowIndex(row);
+        Map<String, String> details = new LinkedHashMap<>();
+        for (Column column : columns) {
+            String value = column.getRowValue(row);
+            details.put(column.getName(), value == null ? "" : value);
+        }
+        return details;
+    }
+
+    public int findRowByValue(String columnName, String searchValue) {
+        if (searchValue == null || searchValue.isBlank()) {
+            throw new IllegalArgumentException("Search value cannot be blank.");
+        }
+
+        if (!hasColumn(columnName)) {
+            return -1;
+        }
+
+        String normalizedSearchValue = searchValue.trim();
+        Column targetColumn = findColumn(columnName);
+        for (int row = 0; row < targetColumn.getSize(); row++) {
+            String rowValue = targetColumn.getRowValue(row);
+            if (normalizedSearchValue.equals(rowValue == null ? "" : rowValue)) {
+                return row;
+            }
+        }
+        return -1;
+    }
+
+    public String getValueOrEmpty(String columnName, int row) {
+        if (!hasColumn(columnName)) {
+            return "";
+        }
+        String value = getValue(columnName, row);
+        return value == null ? "" : value;
+    }
+
+    public List<String> normalizeSelectedColumns(List<String> selectedColumns) {
+        Objects.requireNonNull(selectedColumns, "Selected columns cannot be null.");
+        List<String> normalizedColumns = new ArrayList<>(selectedColumns.size());
+        for (String selectedColumn : selectedColumns) {
+            normalizedColumns.add(normalizeColumnName(selectedColumn));
+        }
+        return List.copyOf(normalizedColumns);
+    }
+
     private Column findColumn(String columnName) {
         String normalizedName = normalizeColumnName(columnName);
         Column column = columnsByName.get(normalizedName);
@@ -74,6 +152,12 @@ public class DataFrame {
             throw new IllegalArgumentException("Unknown column name: " + normalizedName);
         }
         return column;
+    }
+
+    private void validateRowIndex(int row) {
+        if (row < 0 || row >= getRowCount()) {
+            throw new IllegalArgumentException("Row index out of range: " + row);
+        }
     }
 
     private static String normalizeColumnName(String columnName) {

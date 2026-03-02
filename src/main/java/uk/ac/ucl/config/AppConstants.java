@@ -28,6 +28,10 @@ public final class AppConstants {
     public static final String PATIENT_LIST_JSP = "/WEB-INF/jsp/pages/patientList.jsp";
     public static final String PATIENT = "/patient";
     public static final String PATIENT_JSP = "/WEB-INF/jsp/pages/patient.jsp";
+    public static final String SEARCH = "/search";
+    public static final String SEARCH_JSP = "/WEB-INF/jsp/pages/search.jsp";
+    public static final String RUN_SEARCH = "/runsearch";
+    public static final String SEARCH_RESULTS_JSP = "/WEB-INF/jsp/pages/searchResult.jsp";
     public static final String ERROR_JSP = "/WEB-INF/jsp/pages/error.jsp";
 
     private Routes() {
@@ -55,6 +59,7 @@ public final class AppConstants {
 
   public static final class RequestParams {
     public static final String PATIENT_ID = "id";
+    public static final String SEARCH_STRING = "searchstring";
 
     private RequestParams() {
     }
@@ -62,8 +67,10 @@ public final class AppConstants {
 
   public static final class Messages {
     public static final String PATIENT_ID_REQUIRED = "Patient ID is required.";
+    public static final String SEARCH_STRING_REQUIRED = "Please enter one or more search words.";
     public static final String PATIENT_NOT_FOUND_PREFIX = "Patient not found: ";
     public static final String ERROR_LOADING_PATIENT_DATA_PREFIX = "Error loading patient data: ";
+    public static final String ERROR_RUNNING_SEARCH_PREFIX = "Error running search: ";
     public static final String ERROR_LOADING_DATA_PREFIX = "Error loading data: ";
     public static final String UNEXPECTED_ERROR_PREFIX = "Unexpected error: ";
 

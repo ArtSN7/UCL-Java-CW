@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import uk.ac.ucl.config.AppConstants;
 import uk.ac.ucl.model.Model;
-import uk.ac.ucl.model.ModelFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -27,7 +26,7 @@ public class ViewPatientServlet extends HttpServlet {
     try {
       String patientId = request.getParameter(AppConstants.RequestParams.PATIENT_ID);
       LOGGER.fine(() -> "Handling request for /patient with id='" + patientId + "'.");
-      Model model = ModelFactory.getModel();
+      Model model = Model.getInstance();
       Map<String, String> patientDetails = model.getPatientDetails(patientId);
 
       request.setAttribute("patientDetails", patientDetails);

@@ -32,16 +32,24 @@ public class DataLoader {
                 return dataFrame;
             }
 
-            int headerLineNumber = firstNonEmptyLineIndex + 1;
             String headerLine = lines[firstNonEmptyLineIndex];
-            String[] headerValues = splitCsvLine(headerLine, headerLineNumber);
-            List<String> columnNames = buildColumnsFromHeader(dataFrame, headerValues, headerLineNumber);
+            String[] headerValues = splitCsvLine(headerLine);
+            List<String> columnNames = buildColumnsFromHeader(dataFrame, headerValues, firstNonEmptyLineIndex + 1);
 
+            int skippedRows = 0;
             for (int index = firstNonEmptyLineIndex + 1; index <= lastNonEmptyLineIndex; index++) {
                 String[] rowValues = parseRowValues(lines, index, columnNames.size());
+                if (rowValues == null) {
+                    skippedRows++;
+                    continue;
+                }
                 for (int columnIndex = 0; columnIndex < columnNames.size(); columnIndex++) {
                     dataFrame.addValue(columnNames.get(columnIndex), rowValues[columnIndex]);
                 }
+            }
+            if (skippedRows > 0) {
+                int totalSkippedRows = skippedRows;
+                LOGGER.warning(() -> "Skipped " + totalSkippedRows + " malformed/blank row(s) in " + path + ".");
             }
 
             LOGGER.info(() -> "Loaded CSV " + path + " with "
@@ -60,14 +68,16 @@ public class DataLoader {
         int lineNumber = index + 1;
 
         if (line.isBlank()) {
-            throw new IllegalArgumentException("Blank line found at CSV line " + lineNumber + ".");
+            LOGGER.warning(() -> "Skipping blank line at CSV line " + lineNumber + ".");
+            return null;
         }
 
-        String[] rowValues = splitCsvLine(line, lineNumber);
+        String[] rowValues = splitCsvLine(line);
         if (rowValues.length != expectedColumnCount) {
-            throw new IllegalArgumentException(
-                    "Malformed row at line " + lineNumber + ": expected " + expectedColumnCount
-                            + " values but found " + rowValues.length + ".");
+            LOGGER.warning(() -> "Skipping malformed row at line " + lineNumber
+                    + ": expected " + expectedColumnCount
+                    + " values but found " + rowValues.length + ".");
+            return null;
         }
         return rowValues;
     }
@@ -92,11 +102,7 @@ public class DataLoader {
         return columnNames;
     }
 
-    private static String[] splitCsvLine(String line, int lineNumber) {
-        if (line.contains("\"")) {
-            throw new IllegalArgumentException(
-                    "Quoted fields are not supported in phase 1 (line " + lineNumber + ").");
-        }
+    private static String[] splitCsvLine(String line) {
         return line.split(",", -1);
     }
 

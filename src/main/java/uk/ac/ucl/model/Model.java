@@ -5,30 +5,29 @@ import uk.ac.ucl.config.AppConstants;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.Locale;
 import java.util.logging.Logger;
 
 public class Model {
   private static final Logger LOGGER = Logger.getLogger(Model.class.getName());
+  private static Model instance;
 
   private final DataFrame dataFrame;
-  private final Set<String> availableColumns;
-  private final List<String> columnOrder;
+  private final List<String> tableColumns;
 
-  public Model(Path csvPath) throws IOException {
+  private Model(Path csvPath) throws IOException {
     if (csvPath == null) {
       LOGGER.warning("Attempted to create Model with null CSV path.");
       throw new IllegalArgumentException("CSV path cannot be null.");
     }
 
     Path normalizedPath = csvPath.toAbsolutePath().normalize();
-
     if (!Files.isRegularFile(normalizedPath)) {
       LOGGER.warning(() -> "CSV file does not exist: " + normalizedPath + ".");
       throw new IOException("CSV file does not exist: " + normalizedPath);
@@ -49,36 +48,33 @@ public class Model {
     if (loadedFrame.getColumnNames().isEmpty()) {
       throw new IOException("CSV file did not load any columns: " + normalizedPath);
     }
-
-    dataFrame = loadedFrame;
-    columnOrder = loadedFrame.getColumnNames();
-    availableColumns = new HashSet<>(columnOrder);
-
-    if (!availableColumns.contains(AppConstants.CsvColumns.ID)) {
-      LOGGER.warning(() -> "CSV is missing required ID column: " + normalizedPath + ".");
+    if (!loadedFrame.hasColumn(AppConstants.CsvColumns.ID)) {
       throw new IOException("CSV file is missing required column: " + AppConstants.CsvColumns.ID);
     }
+
+    this.dataFrame = loadedFrame;
+    this.tableColumns = loadedFrame.normalizeSelectedColumns(AppConstants.CsvColumns.TABLE_COLUMNS);
     LOGGER.info(() -> "Model loaded from " + normalizedPath + " with "
-      + dataFrame.getRowCount() + " rows.");
+      + loadedFrame.getRowCount() + " rows.");
+  }
+
+  public static synchronized Model getInstance() throws IOException {
+    if (instance == null) {
+      Path csvPath = resolveCsvPath();
+      LOGGER.info(() -> "Creating model using CSV file: " + csvPath + ".");
+      instance = new Model(csvPath);
+    } else {
+      LOGGER.fine("Reusing existing Model singleton.");
+    }
+    return instance;
   }
 
   public List<String> getTableColumns() {
-    return AppConstants.CsvColumns.TABLE_COLUMNS;
+    return tableColumns;
   }
 
   public List<Map<String, String>> getPatientTableRows() {
-    int rowCount = dataFrame.getRowCount();
-    List<Map<String, String>> rows = new ArrayList<>(rowCount);
-
-    for (int row = 0; row < rowCount; row++) {
-      Map<String, String> rowData = new LinkedHashMap<>();
-      for (String columnName : AppConstants.CsvColumns.TABLE_COLUMNS) {
-        rowData.put(columnName, readValue(columnName, row));
-      }
-      rows.add(rowData);
-    }
-
-    return rows;
+    return dataFrame.getRowsForColumns(tableColumns);
   }
 
   public Map<String, String> getPatientDetails(String patientId) {
@@ -88,34 +84,65 @@ public class Model {
     }
 
     String normalizedId = patientId.trim();
-    int row = findRowById(normalizedId);
+    int row = dataFrame.findRowByValue(AppConstants.CsvColumns.ID, normalizedId);
     if (row < 0) {
       LOGGER.warning(() -> "Patient id not found: " + normalizedId + ".");
       throw new NoSuchElementException("Unknown patient id: " + normalizedId);
     }
 
-    Map<String, String> details = new LinkedHashMap<>();
-    for (String columnName : columnOrder) {
-      details.put(columnName, readValue(columnName, row));
-    }
-    return details;
+    return dataFrame.getRecordDetails(row);
   }
 
-  private int findRowById(String patientId) {
+  public List<Map<String, String>> searchPatients(String searchString) {
+    if (searchString == null || searchString.isBlank()) {
+      LOGGER.warning("Search request had a blank query.");
+      throw new IllegalArgumentException("Search string cannot be blank.");
+    }
+
+    List<String> keywords = Arrays.stream(searchString.trim().toLowerCase(Locale.ROOT).split("\\s+"))
+      .filter(token -> !token.isBlank())
+      .toList();
+    if (keywords.isEmpty()) {
+      LOGGER.warning("Search request produced no valid keywords.");
+      throw new IllegalArgumentException("Search string cannot be blank.");
+    }
+
+    List<Map<String, String>> matches = new ArrayList<>();
     for (int row = 0; row < dataFrame.getRowCount(); row++) {
-      if (patientId.equals(readValue(AppConstants.CsvColumns.ID, row))) {
-        return row;
+      Map<String, String> record = dataFrame.getRecordDetails(row);
+      if (recordMatchesKeywords(record, keywords)) {
+        matches.add(dataFrame.getRowForColumns(row, tableColumns));
       }
     }
-    return -1;
+    LOGGER.fine(() -> "Search query '" + searchString + "' returned " + matches.size() + " rows.");
+    return matches;
   }
 
-  private String readValue(String columnName, int row) {
-    if (!availableColumns.contains(columnName)) {
-      return "";
+  private static boolean recordMatchesKeywords(Map<String, String> record, List<String> keywords) {
+    String searchable = String.join(
+      " ",
+      record.values().stream()
+        .map(value -> value == null ? "" : value.toLowerCase(Locale.ROOT))
+        .toList()
+    );
+    for (String keyword : keywords) {
+      if (!searchable.contains(keyword)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static Path resolveCsvPath() {
+    String configuredPath = System.getProperty(AppConstants.Config.PATIENTS_CSV.key());
+    if (configuredPath == null || configuredPath.isBlank()) {
+      configuredPath = System.getenv(AppConstants.Config.PATIENTS_CSV.key());
     }
 
-    String value = dataFrame.getValue(columnName, row);
-    return value == null ? "" : value;
+    if (configuredPath == null || configuredPath.isBlank()) {
+      configuredPath = AppConstants.Config.PATIENTS_CSV.defaultValue();
+    }
+
+    return Paths.get(configuredPath.trim()).normalize();
   }
 }
