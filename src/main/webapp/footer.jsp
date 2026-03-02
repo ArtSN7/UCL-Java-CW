@@ -1,5 +1,5 @@
-<footer class="site-footer">
-  <div class="app-shell footer-inner">
-    <p class="muted">COMP0004 coursework web application.</p>
+<footer class="site-footer py-4">
+  <div class="container border-top pt-3">
+    <p class="mb-0 text-secondary small">COMP0004 coursework web application.</p>
   </div>
 </footer>
