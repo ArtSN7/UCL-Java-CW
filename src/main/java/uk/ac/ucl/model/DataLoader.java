@@ -6,15 +6,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DataLoader {
+    private static final Logger LOGGER = Logger.getLogger(DataLoader.class.getName());
+
     public DataFrame loadCsv(Path path) {
         DataFrame dataFrame = new DataFrame();
+        LOGGER.fine(() -> "Loading CSV from " + path + ".");
 
         try {
             String content = Files.readString(path, StandardCharsets.UTF_8);
 
             if (content.isBlank()) {
+                LOGGER.warning(() -> "CSV file is blank: " + path + ".");
                 return dataFrame;
             }
 
@@ -22,6 +28,7 @@ public class DataLoader {
             int firstNonEmptyLineIndex = findFirstNonEmptyLineIndex(lines);
             int lastNonEmptyLineIndex = findLastNonEmptyLineIndex(lines);
             if (firstNonEmptyLineIndex < 0 || lastNonEmptyLineIndex < 0) {
+                LOGGER.warning(() -> "CSV file has no non-empty lines: " + path + ".");
                 return dataFrame;
             }
 
@@ -37,10 +44,13 @@ public class DataLoader {
                 }
             }
 
+            LOGGER.info(() -> "Loaded CSV " + path + " with "
+                    + dataFrame.getRowCount() + " rows and "
+                    + dataFrame.getColumnNames().size() + " columns.");
             return dataFrame;
 
         } catch (IOException exception) {
-            System.err.println("Unable to read CSV file '" + path + "': " + exception.getMessage());
+            LOGGER.log(Level.SEVERE, "Unable to read CSV file '" + path + "'.", exception);
             return new DataFrame();
         }
     }

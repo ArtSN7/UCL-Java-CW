@@ -1,8 +1,12 @@
-<div>
-  <h1>Patient Data App</h1>
-  <div class="links">
-    <a href="/">Home</a>
-    <a href="/patientList">Patient Table</a>
+<header class="site-header">
+  <div class="app-shell header-inner">
+    <div>
+      <h1 class="brand-title">Patient Data App</h1>
+      <p class="brand-subtitle">Clinical records viewer</p>
+    </div>
+    <nav class="nav-pills" aria-label="Primary navigation">
+      <a class="nav-pill" href="/">Home</a>
+      <a class="nav-pill" href="/patientList">Patient Table</a>
+    </nav>
   </div>
-  <div class="clearBoth"></div>
-</div>
+</header>

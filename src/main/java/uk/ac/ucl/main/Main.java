@@ -5,6 +5,7 @@ import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
+import uk.ac.ucl.config.AppConstants;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,11 +16,6 @@ import java.util.logging.Logger;
 public final class Main {
   private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
 
-  private static final int DEFAULT_PORT = 8080;
-  private static final String DEFAULT_WEBAPP_DIR = "src/main/webapp";
-  private static final String DEFAULT_CLASSES_DIR = "target/classes";
-  private static final String WEB_INF_CLASSES = "/WEB-INF/classes";
-
   private Main() {
   }
 
@@ -28,8 +24,11 @@ public final class Main {
 
     try {
       int port = readPort();
-      Path webappDirectory = readPathSetting("WEBAPP_DIR", DEFAULT_WEBAPP_DIR);
-      Path classesDirectory = readPathSetting("CLASSES_DIR", DEFAULT_CLASSES_DIR);
+      Path webappDirectory = readPathSetting(AppConstants.Config.WEBAPP_DIR);
+      Path classesDirectory = readPathSetting(AppConstants.Config.CLASSES_DIR);
+      LOGGER.info(() -> "Starting server with port=" + port
+        + ", webappDir=" + webappDirectory.toAbsolutePath()
+        + ", classesDir=" + classesDirectory.toAbsolutePath() + ".");
 
       requireDirectory(webappDirectory, "Webapp directory");
       requireDirectory(classesDirectory, "Classes directory");
@@ -37,7 +36,10 @@ public final class Main {
       tomcat.setPort(port);
       tomcat.getConnector();
 
-      Context context = tomcat.addWebapp("", webappDirectory.toAbsolutePath().toString());
+      Context context = tomcat.addWebapp(
+        AppConstants.Routes.ROOT_CONTEXT,
+        webappDirectory.toAbsolutePath().toString()
+      );
       configureClassResources(context, classesDirectory);
       addShutdownHook(tomcat);
 
@@ -50,21 +52,24 @@ public final class Main {
   }
 
   private static int readPort() {
-    String configuredPort = readSetting("SERVER_PORT");
+    String configuredPort = readSetting(AppConstants.Config.SERVER_PORT.key());
     if (configuredPort == null) {
-      return DEFAULT_PORT;
+      return AppConstants.Config.SERVER_PORT.defaultValue();
     }
 
     try {
       return Integer.parseInt(configuredPort);
     } catch (NumberFormatException exception) {
-      throw new IllegalArgumentException("Invalid SERVER_PORT: " + configuredPort, exception);
+      throw new IllegalArgumentException(
+        "Invalid " + AppConstants.Config.SERVER_PORT.key() + ": " + configuredPort,
+        exception
+      );
     }
   }
 
-  private static Path readPathSetting(String settingName, String defaultValue) {
-    String configured = readSetting(settingName);
-    String pathValue = configured == null ? defaultValue : configured;
+  private static Path readPathSetting(AppConstants.StringConfig setting) {
+    String configured = readSetting(setting.key());
+    String pathValue = configured == null ? setting.defaultValue() : configured;
     return Paths.get(pathValue).normalize();
   }
 
@@ -91,7 +96,7 @@ public final class Main {
     WebResourceRoot resources = new StandardRoot(context);
     resources.addPreResources(new DirResourceSet(
       resources,
-      WEB_INF_CLASSES,
+      AppConstants.Paths.WEB_INF_CLASSES,
       classesDirectory.toAbsolutePath().toString(),
       "/"
     ));

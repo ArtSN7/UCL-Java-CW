@@ -1,5 +1,7 @@
 package uk.ac.ucl.model;
 
+import uk.ac.ucl.config.AppConstants;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,20 +12,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.logging.Logger;
 
 public class Model {
-  private static final String ID_COLUMN = "ID";
-  private static final String FIRST_COLUMN = "FIRST";
-  private static final String LAST_COLUMN = "LAST";
-  private static final String CITY_COLUMN = "CITY";
-  private static final String STATE_COLUMN = "STATE";
-  private static final List<String> TABLE_COLUMNS = List.of(
-    ID_COLUMN,
-    FIRST_COLUMN,
-    LAST_COLUMN,
-    CITY_COLUMN,
-    STATE_COLUMN
-  );
+  private static final Logger LOGGER = Logger.getLogger(Model.class.getName());
 
   private final DataFrame dataFrame;
   private final Set<String> availableColumns;
@@ -31,15 +23,18 @@ public class Model {
 
   public Model(Path csvPath) throws IOException {
     if (csvPath == null) {
+      LOGGER.warning("Attempted to create Model with null CSV path.");
       throw new IllegalArgumentException("CSV path cannot be null.");
     }
 
     Path normalizedPath = csvPath.toAbsolutePath().normalize();
 
     if (!Files.isRegularFile(normalizedPath)) {
+      LOGGER.warning(() -> "CSV file does not exist: " + normalizedPath + ".");
       throw new IOException("CSV file does not exist: " + normalizedPath);
     }
     if (!Files.isReadable(normalizedPath)) {
+      LOGGER.warning(() -> "CSV file is not readable: " + normalizedPath + ".");
       throw new IOException("CSV file is not readable: " + normalizedPath);
     }
 
@@ -59,13 +54,16 @@ public class Model {
     columnOrder = loadedFrame.getColumnNames();
     availableColumns = new HashSet<>(columnOrder);
 
-    if (!availableColumns.contains(ID_COLUMN)) {
-      throw new IOException("CSV file is missing required column: " + ID_COLUMN);
+    if (!availableColumns.contains(AppConstants.CsvColumns.ID)) {
+      LOGGER.warning(() -> "CSV is missing required ID column: " + normalizedPath + ".");
+      throw new IOException("CSV file is missing required column: " + AppConstants.CsvColumns.ID);
     }
+    LOGGER.info(() -> "Model loaded from " + normalizedPath + " with "
+      + dataFrame.getRowCount() + " rows.");
   }
 
   public List<String> getTableColumns() {
-    return TABLE_COLUMNS;
+    return AppConstants.CsvColumns.TABLE_COLUMNS;
   }
 
   public List<Map<String, String>> getPatientTableRows() {
@@ -74,7 +72,7 @@ public class Model {
 
     for (int row = 0; row < rowCount; row++) {
       Map<String, String> rowData = new LinkedHashMap<>();
-      for (String columnName : TABLE_COLUMNS) {
+      for (String columnName : AppConstants.CsvColumns.TABLE_COLUMNS) {
         rowData.put(columnName, readValue(columnName, row));
       }
       rows.add(rowData);
@@ -85,12 +83,14 @@ public class Model {
 
   public Map<String, String> getPatientDetails(String patientId) {
     if (patientId == null || patientId.isBlank()) {
+      LOGGER.warning("Patient detail request had a blank id.");
       throw new IllegalArgumentException("Patient id cannot be blank.");
     }
 
     String normalizedId = patientId.trim();
     int row = findRowById(normalizedId);
     if (row < 0) {
+      LOGGER.warning(() -> "Patient id not found: " + normalizedId + ".");
       throw new NoSuchElementException("Unknown patient id: " + normalizedId);
     }
 
@@ -103,7 +103,7 @@ public class Model {
 
   private int findRowById(String patientId) {
     for (int row = 0; row < dataFrame.getRowCount(); row++) {
-      if (patientId.equals(readValue(ID_COLUMN, row))) {
+      if (patientId.equals(readValue(AppConstants.CsvColumns.ID, row))) {
         return row;
       }
     }

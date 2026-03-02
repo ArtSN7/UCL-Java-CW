@@ -2,18 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Patient Data</title>
+  <link rel="stylesheet" type="text/css" href="/styles.css">
 </head>
 <body>
-<h2>Welcome to the Patient Data App</h2>
+<header class="site-header">
+  <div class="app-shell header-inner">
+    <div>
+      <h1 class="brand-title">Patient Data App</h1>
+      <p class="brand-subtitle">Clinical records viewer</p>
+    </div>
+    <nav class="nav-pills" aria-label="Primary navigation">
+      <a class="nav-pill" href="/">Home</a>
+      <a class="nav-pill" href="/patientList">Patient Table</a>
+    </nav>
+  </div>
+</header>
 
-<nav>
-  <ul>
-    <li>
-      <a href="patientList">View Patient Table</a>
-    </li>
-  </ul>
-</nav>
+<main class="app-shell main-content page-enter">
+  <section class="surface-card">
+    <h2 class="hero-title">Explore Synthetic Patient Records</h2>
+    <p class="hero-text">
+      View the core patient dataset in a readable table and open full details for any individual record.
+    </p>
+    <a class="btn btn-primary" href="/patientList">Open Patient Table</a>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="app-shell footer-inner">
+    <p class="muted">COMP0004 coursework web application.</p>
+  </div>
+</footer>
 
 </body>
 </html>
