@@ -2,11 +2,11 @@
 
 <html>
 <head>
-  <jsp:include page="/meta.jsp"/>
+  <jsp:include page="/WEB-INF/jsp/partials/meta.jsp"/>
   <title>Patient Data App - Error</title>
 </head>
 <body>
-<jsp:include page="/header.jsp"/>
+<jsp:include page="/WEB-INF/jsp/partials/header.jsp"/>
 <main class="container my-4 page-enter">
   <section class="card border-0 shadow-sm data-card">
     <div class="card-body p-4">
@@ -21,12 +21,12 @@
       %>
       <div class="alert alert-danger alert-error" role="alert"><%= errorMessage %></div>
       <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-outline-primary rounded-pill" href="patientList">Back to patient table</a>
-        <a class="btn btn-primary rounded-pill" href="./">Go to home</a>
+        <a class="btn btn-outline-primary rounded-pill" href="/patientList">Back to patient table</a>
+        <a class="btn btn-primary rounded-pill" href="/">Go to home</a>
       </div>
     </div>
   </section>
 </main>
-<jsp:include page="/footer.jsp"/>
+<jsp:include page="/WEB-INF/jsp/partials/footer.jsp"/>
 </body>
 </html>

@@ -25,10 +25,10 @@ public final class AppConstants {
   public static final class Routes {
     public static final String ROOT_CONTEXT = "";
     public static final String PATIENT_LIST = "/patientList";
-    public static final String PATIENT_LIST_JSP = "/patientList.jsp";
+    public static final String PATIENT_LIST_JSP = "/WEB-INF/jsp/pages/patientList.jsp";
     public static final String PATIENT = "/patient";
-    public static final String PATIENT_JSP = "/patient.jsp";
-    public static final String ERROR_JSP = "/error.jsp";
+    public static final String PATIENT_JSP = "/WEB-INF/jsp/pages/patient.jsp";
+    public static final String ERROR_JSP = "/WEB-INF/jsp/pages/error.jsp";
 
     private Routes() {
     }

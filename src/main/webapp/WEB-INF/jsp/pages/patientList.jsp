@@ -4,11 +4,11 @@
 
 <html>
 <head>
-  <jsp:include page="/meta.jsp"/>
+  <jsp:include page="/WEB-INF/jsp/partials/meta.jsp"/>
   <title>Patient Data App</title>
 </head>
 <body>
-<jsp:include page="/header.jsp"/>
+<jsp:include page="/WEB-INF/jsp/partials/header.jsp"/>
 <main class="container my-4 page-enter">
   <section class="card border-0 shadow-sm data-card">
     <div class="card-body p-4">
@@ -57,7 +57,7 @@
                 if ("ID".equals(columnName) && !value.isBlank())
                 {
             %>
-            <td><a class="id-link" href="patient?id=<%= value %>"><%= value %></a></td>
+            <td><a class="id-link" href="/patient?id=<%= value %>"><%= value %></a></td>
             <%
                 } else {
             %>
@@ -90,6 +90,6 @@
     </div>
   </section>
 </main>
-<jsp:include page="/footer.jsp"/>
+<jsp:include page="/WEB-INF/jsp/partials/footer.jsp"/>
 </body>
 </html>

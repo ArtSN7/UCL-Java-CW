@@ -3,4 +3,4 @@
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
 />
-<link rel="stylesheet" type="text/css" href="styles.css?v=20260302"/>
+<link rel="stylesheet" type="text/css" href="/assets/css/styles.css?v=20260302"/>
