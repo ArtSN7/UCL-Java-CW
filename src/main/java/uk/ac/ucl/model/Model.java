@@ -92,6 +92,10 @@ public class Model {
     return dataFrame.getRowsForColumns(tableColumns);
   }
 
+  public List<Map<String, String>> getAllPatientRows() {
+    return dataFrame.getRowsForColumns(getAllColumns());
+  }
+
   public Map<String, String> getPatientDetails(String patientId) {
     String normalizedId = normalizePatientId(patientId);
     int row = dataFrame.findRowByValue(AppConstants.CsvColumns.ID, normalizedId);

@@ -39,12 +39,18 @@
           <h2 class="h3 mb-2">Patient Records</h2>
           <p class="text-secondary mb-0">Click a patient ID to view full details.</p>
         </div>
-        <a
-          class="btn btn-primary rounded-pill px-4"
-          href="/patient/add"
-          target="_blank"
-          rel="noopener"
-        >Add Patient</a>
+        <div class="d-flex flex-wrap gap-2">
+          <a
+            class="btn btn-primary rounded-pill px-4"
+            href="/patient/add"
+            target="_blank"
+            rel="noopener"
+          >Add Patient</a>
+          <a
+            class="btn btn-outline-secondary rounded-pill px-4"
+            href="/patient/export/json"
+          >Export to JSON</a>
+        </div>
       </div>
 
       <%

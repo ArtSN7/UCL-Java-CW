@@ -32,6 +32,7 @@ public final class AppConstants {
     public static final String PATIENT_ADD_JSP = "/WEB-INF/jsp/pages/addPatient.jsp";
     public static final String PATIENT_EDIT = "/patient/edit";
     public static final String PATIENT_DELETE = "/patient/delete";
+    public static final String PATIENT_EXPORT_JSON = "/patient/export/json";
     public static final String SEARCH = "/search";
     public static final String SEARCH_JSP = "/WEB-INF/jsp/pages/search.jsp";
     public static final String RUN_SEARCH = "/runsearch";
@@ -90,6 +91,7 @@ public final class AppConstants {
     public static final String PATIENT_DELETED_SUCCESS_PREFIX = "Patient deleted: ";
     public static final String ERROR_LOADING_PATIENT_DATA_PREFIX = "Error loading patient data: ";
     public static final String ERROR_SAVING_PATIENT_DATA_PREFIX = "Error saving patient data: ";
+    public static final String ERROR_EXPORTING_PATIENT_DATA_PREFIX = "Error exporting patient data: ";
     public static final String ERROR_RUNNING_SEARCH_PREFIX = "Error running search: ";
     public static final String ERROR_LOADING_STATISTICS_PREFIX = "Error loading statistics: ";
     public static final String ERROR_LOADING_DATA_PREFIX = "Error loading data: ";
