@@ -60,6 +60,48 @@ body {
   border-width: 1px;
 }
 
+.stats-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.metric-card {
+  border: 1px solid #d8e7ef;
+  background: #ffffff;
+  border-radius: 0.85rem;
+  padding: 0.95rem;
+}
+
+.metric-label {
+  color: #557080;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-name {
+  color: #1f3442;
+}
+
+.count-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.count-card {
+  border: 1px solid #d8e7ef;
+  background: #ffffff;
+  border-radius: 0.85rem;
+  padding: 0.95rem;
+}
+
+.names-list {
+  max-height: 20rem;
+  overflow: auto;
+}
+
 .page-enter {
   animation: pageFadeIn 340ms ease both;
 }

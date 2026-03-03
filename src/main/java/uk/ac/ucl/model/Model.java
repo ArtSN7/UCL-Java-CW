@@ -6,12 +6,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 public class Model {
@@ -118,6 +124,107 @@ public class Model {
     return matches;
   }
 
+  public StatisticsSummary getStatisticsSummary() {
+    PersonMetric oldestLiving = null;
+    PersonMetric youngestLiving = null;
+    PersonMetric oldestOverall = null;
+    PersonMetric youngestOverall = null;
+
+    int aliveCount = 0;
+    int deadCount = 0;
+    int totalCount = dataFrame.getRowCount();
+
+    for (int row = 0; row < totalCount; row++) {
+      boolean alive = isAliveRow(row);
+      if (alive) {
+        aliveCount++;
+      } else {
+        deadCount++;
+      }
+
+      PersonMetric metric = buildPersonMetric(row);
+      if (metric == null) {
+        continue;
+      }
+
+      oldestOverall = pickOlder(oldestOverall, metric);
+      youngestOverall = pickYounger(youngestOverall, metric);
+
+      if (metric.alive()) {
+        oldestLiving = pickOlder(oldestLiving, metric);
+        youngestLiving = pickYounger(youngestLiving, metric);
+      }
+    }
+
+    return new StatisticsSummary(
+      oldestLiving,
+      youngestLiving,
+      oldestOverall,
+      youngestOverall,
+      aliveCount,
+      deadCount,
+      totalCount
+    );
+  }
+
+  public List<String> getAvailableCities() {
+    Set<String> cities = new TreeSet<>();
+    for (int row = 0; row < dataFrame.getRowCount(); row++) {
+      String city = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.CITY, row).trim();
+      if (!city.isBlank()) {
+        cities.add(city);
+      }
+    }
+    return List.copyOf(cities);
+  }
+
+  public List<String> getPatientNamesByCity(String city, LifeStatusFilter filter) {
+    if (city == null || city.isBlank()) {
+      throw new IllegalArgumentException(AppConstants.Messages.CITY_REQUIRED);
+    }
+
+    LifeStatusFilter resolvedFilter = filter == null ? LifeStatusFilter.ALL : filter;
+    String normalizedCity = city.trim();
+    List<NameEntry> names = new ArrayList<>();
+
+    for (int row = 0; row < dataFrame.getRowCount(); row++) {
+      String rowCity = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.CITY, row).trim();
+      if (!normalizedCity.equals(rowCity)) {
+        continue;
+      }
+
+      boolean alive = isAliveRow(row);
+      if (resolvedFilter == LifeStatusFilter.ALIVE && !alive) {
+        continue;
+      }
+      if (resolvedFilter == LifeStatusFilter.DEAD && alive) {
+        continue;
+      }
+
+      String firstName = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.FIRST, row).trim();
+      String lastName = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.LAST, row).trim();
+      String fullName = (firstName + " " + lastName).trim();
+      if (fullName.isBlank()) {
+        fullName = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.ID, row).trim();
+      }
+
+      names.add(new NameEntry(
+        firstName.toLowerCase(Locale.ROOT),
+        lastName.toLowerCase(Locale.ROOT),
+        fullName
+      ));
+    }
+
+    names.sort(Comparator
+      .comparing(NameEntry::lastSort)
+      .thenComparing(NameEntry::firstSort)
+      .thenComparing(NameEntry::displayName));
+
+    return names.stream()
+      .map(NameEntry::displayName)
+      .toList();
+  }
+
   private static boolean recordMatchesKeywords(Map<String, String> record, List<String> keywords) {
     String searchable = String.join(
       " ",
@@ -133,6 +240,100 @@ public class Model {
     return true;
   }
 
+  private boolean isAliveRow(int row) {
+    return dataFrame.getValueOrEmpty(AppConstants.CsvColumns.DEATHDATE, row).isBlank();
+  }
+
+  private PersonMetric buildPersonMetric(int row) {
+    String id = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.ID, row).trim();
+    String firstName = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.FIRST, row).trim();
+    String lastName = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.LAST, row).trim();
+    String birthDateText = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.BIRTHDATE, row).trim();
+    String deathDateText = dataFrame.getValueOrEmpty(AppConstants.CsvColumns.DEATHDATE, row).trim();
+
+    if (birthDateText.isBlank()) {
+      LOGGER.warning(() -> "Skipping patient '" + id + "' due to missing BIRTHDATE.");
+      return null;
+    }
+
+    LocalDate birthDate = parseDate(AppConstants.CsvColumns.BIRTHDATE, id, birthDateText);
+    if (birthDate == null) {
+      return null;
+    }
+
+    boolean alive = deathDateText.isBlank();
+    LocalDate endDate = LocalDate.now();
+    if (!alive) {
+      LocalDate deathDate = parseDate(AppConstants.CsvColumns.DEATHDATE, id, deathDateText);
+      if (deathDate == null) {
+        return null;
+      }
+      if (deathDate.isBefore(birthDate)) {
+        LOGGER.warning(() -> "Skipping patient '" + id + "' due to DEATHDATE before BIRTHDATE.");
+        return null;
+      }
+      endDate = deathDate;
+    }
+
+    int ageYears = Period.between(birthDate, endDate).getYears();
+    if (ageYears < 0) {
+      LOGGER.warning(() -> "Skipping patient '" + id + "' due to negative computed age.");
+      return null;
+    }
+
+    return new PersonMetric(
+      id,
+      firstName,
+      lastName,
+      birthDateText,
+      deathDateText,
+      ageYears,
+      alive
+    );
+  }
+
+  private LocalDate parseDate(String columnName, String patientId, String value) {
+    try {
+      return LocalDate.parse(value);
+    } catch (DateTimeParseException exception) {
+      LOGGER.warning(() -> "Skipping patient '" + patientId + "' due to invalid "
+        + columnName + ": '" + value + "'.");
+      return null;
+    }
+  }
+
+  private static PersonMetric pickOlder(PersonMetric current, PersonMetric candidate) {
+    if (current == null) {
+      return candidate;
+    }
+
+    int dateComparison = candidate.birthDate().compareTo(current.birthDate());
+    if (dateComparison < 0) {
+      return candidate;
+    }
+    if (dateComparison > 0) {
+      return current;
+    }
+
+    return candidate.id().compareTo(current.id()) < 0 ? candidate : current;
+  }
+
+  private static PersonMetric pickYounger(PersonMetric current, PersonMetric candidate) {
+    if (current == null) {
+      return candidate;
+    }
+
+    int dateComparison = candidate.birthDate().compareTo(current.birthDate());
+    if (dateComparison > 0) {
+      return candidate;
+    }
+    if (dateComparison < 0) {
+      return current;
+    }
+
+    return candidate.id().compareTo(current.id()) < 0 ? candidate : current;
+  }
+
   private static Path resolveCsvPath() {
     String configuredPath = System.getProperty(AppConstants.Config.PATIENTS_CSV.key());
     if (configuredPath == null || configuredPath.isBlank()) {
@@ -144,5 +345,8 @@ public class Model {
     }
 
     return Paths.get(configuredPath.trim()).normalize();
+  }
+
+  private record NameEntry(String firstSort, String lastSort, String displayName) {
   }
 }
