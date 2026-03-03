@@ -125,7 +125,6 @@
             String fieldName = AppConstants.RequestParams.FIELD_PREFIX + columnName;
             String value = patientDetails.getOrDefault(columnName, "");
             String inputType = inputTypeFor(columnName);
-            boolean isRequired = !AppConstants.CsvColumns.DEATHDATE.equals(columnName);
         %>
         <div class="col-md-6">
           <label class="form-label" for="<%= fieldName %>"><%= escapeHtml(columnName) %></label>
@@ -135,7 +134,6 @@
             type="<%= inputType %>"
             class="form-control"
             value="<%= escapeHtml(value) %>"
-            <%= isRequired ? "required" : "" %>
           />
         </div>
         <%

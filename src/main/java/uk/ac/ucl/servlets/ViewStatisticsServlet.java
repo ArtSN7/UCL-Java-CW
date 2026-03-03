@@ -1,5 +1,7 @@
 package uk.ac.ucl.servlets;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -13,6 +15,7 @@ import uk.ac.ucl.model.Model;
 import uk.ac.ucl.model.StatisticsSummary;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -21,6 +24,7 @@ import java.util.logging.Logger;
 @WebServlet(AppConstants.Routes.STATISTICS)
 public class ViewStatisticsServlet extends HttpServlet {
   private static final Logger LOGGER = Logger.getLogger(ViewStatisticsServlet.class.getName());
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -54,12 +58,13 @@ public class ViewStatisticsServlet extends HttpServlet {
       request.setAttribute("availableCities", availableCities);
       request.setAttribute("selectedCity", selectedCity);
       request.setAttribute("selectedStatus", statusFilter.toRequestValue());
+      request.setAttribute("selectedStatusLabel", toStatusLabel(statusFilter));
       request.setAttribute("patientNames", patientNames);
       request.setAttribute("resultCount", patientNames.size());
       request.setAttribute("cityMessage", cityMessage);
-      request.setAttribute("ageDistribution", ageDistribution);
-      request.setAttribute("ethnicityDistribution", ethnicityDistribution);
-      request.setAttribute("raceDistribution", raceDistribution);
+      attachChartAttributes(request, "age", ageDistribution);
+      attachChartAttributes(request, "ethnicity", ethnicityDistribution);
+      attachChartAttributes(request, "race", raceDistribution);
 
       forwardTo(AppConstants.Routes.STATISTICS_JSP, request, response);
     } catch (IOException exception) {
@@ -90,6 +95,40 @@ public class ViewStatisticsServlet extends HttpServlet {
   private static String readTrimmedParam(HttpServletRequest request, String paramName) {
     String value = request.getParameter(paramName);
     return value == null ? "" : value.trim();
+  }
+
+  private static String toStatusLabel(LifeStatusFilter filter) {
+    return switch (filter) {
+      case ALIVE -> "Alive";
+      case DEAD -> "Dead";
+      default -> "All";
+    };
+  }
+
+  private static void attachChartAttributes(
+    HttpServletRequest request,
+    String prefix,
+    Map<String, Integer> distribution
+  ) {
+    List<String> labels = new ArrayList<>(distribution.keySet());
+    List<Integer> counts = new ArrayList<>(distribution.values());
+    request.setAttribute(prefix + "Labels", labels);
+    request.setAttribute(prefix + "Counts", counts);
+    request.setAttribute(prefix + "LabelsJson", toSafeJson(labels));
+    request.setAttribute(prefix + "CountsJson", toSafeJson(counts));
+  }
+
+  private static String toSafeJson(Object value) {
+    try {
+      String json = OBJECT_MAPPER.writeValueAsString(value);
+      // Protect inline <script> contexts from accidental closing tags.
+      return json
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026");
+    } catch (JsonProcessingException exception) {
+      throw new IllegalStateException("Unable to serialize chart data as JSON.", exception);
+    }
   }
 
   private void forwardTo(String path, HttpServletRequest request, HttpServletResponse response)

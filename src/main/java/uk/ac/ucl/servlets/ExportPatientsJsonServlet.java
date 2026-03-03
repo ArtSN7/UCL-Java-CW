@@ -11,8 +11,8 @@ import uk.ac.ucl.config.AppConstants;
 import uk.ac.ucl.model.Model;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,13 +25,19 @@ public class ExportPatientsJsonServlet extends HttpServlet {
     throws ServletException, IOException {
     try {
       Model model = Model.getInstance();
-      List<Map<String, String>> allRows = model.getAllPatientRows();
+      Path temporaryJsonFile = Files.createTempFile("patients-export-", ".json");
+      try {
+        model.exportPatientsToJson(temporaryJsonFile);
 
-      response.setCharacterEncoding("UTF-8");
-      response.setContentType("application/json");
-      response.setHeader("Content-Disposition", "attachment; filename=\"patients.json\"");
-      response.getWriter().write(toJson(allRows));
-      response.getWriter().flush();
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json");
+        response.setHeader("Content-Disposition", "attachment; filename=\"patients.json\"");
+        response.setContentLengthLong(Files.size(temporaryJsonFile));
+        Files.copy(temporaryJsonFile, response.getOutputStream());
+        response.flushBuffer();
+      } finally {
+        Files.deleteIfExists(temporaryJsonFile);
+      }
     } catch (IOException exception) {
       LOGGER.log(Level.SEVERE, "Failed to export patient data.", exception);
       response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -56,69 +62,11 @@ public class ExportPatientsJsonServlet extends HttpServlet {
 
   private void forwardToError(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
+    if (response.isCommitted()) {
+      return;
+    }
     ServletContext context = getServletContext();
     RequestDispatcher dispatcher = context.getRequestDispatcher(AppConstants.Routes.ERROR_JSP);
     dispatcher.forward(request, response);
-  }
-
-  private static String toJson(List<Map<String, String>> rows) {
-    StringBuilder builder = new StringBuilder();
-    builder.append("[\n");
-
-    for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
-      Map<String, String> row = rows.get(rowIndex);
-      builder.append("  {");
-
-      int fieldIndex = 0;
-      for (Map.Entry<String, String> entry : row.entrySet()) {
-        builder.append("\n    \"")
-          .append(escapeJson(entry.getKey()))
-          .append("\": \"")
-          .append(escapeJson(entry.getValue()))
-          .append("\"");
-
-        if (fieldIndex < row.size() - 1) {
-          builder.append(',');
-        }
-        fieldIndex++;
-      }
-
-      builder.append("\n  }");
-      if (rowIndex < rows.size() - 1) {
-        builder.append(',');
-      }
-      builder.append('\n');
-    }
-
-    builder.append(']');
-    return builder.toString();
-  }
-
-  private static String escapeJson(String value) {
-    if (value == null) {
-      return "";
-    }
-
-    StringBuilder escaped = new StringBuilder(value.length());
-    for (int index = 0; index < value.length(); index++) {
-      char character = value.charAt(index);
-      switch (character) {
-        case '"' -> escaped.append("\\\"");
-        case '\\' -> escaped.append("\\\\");
-        case '\b' -> escaped.append("\\b");
-        case '\f' -> escaped.append("\\f");
-        case '\n' -> escaped.append("\\n");
-        case '\r' -> escaped.append("\\r");
-        case '\t' -> escaped.append("\\t");
-        default -> {
-          if (character < 0x20) {
-            escaped.append(String.format("\\u%04x", (int) character));
-          } else {
-            escaped.append(character);
-          }
-        }
-      }
-    }
-    return escaped.toString();
   }
 }

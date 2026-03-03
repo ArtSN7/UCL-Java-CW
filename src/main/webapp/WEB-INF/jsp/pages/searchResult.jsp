@@ -1,6 +1,36 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.net.URLEncoder" %>
+<%@ page import="java.nio.charset.StandardCharsets" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+
+<%!
+  private static String escapeHtml(String value) {
+    if (value == null) {
+      return "";
+    }
+    StringBuilder escaped = new StringBuilder(value.length());
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '&' -> escaped.append("&amp;");
+        case '<' -> escaped.append("&lt;");
+        case '>' -> escaped.append("&gt;");
+        case '"' -> escaped.append("&quot;");
+        case '\'' -> escaped.append("&#39;");
+        default -> escaped.append(c);
+      }
+    }
+    return escaped.toString();
+  }
+
+  private static String encodeUrlParam(String value) {
+    if (value == null) {
+      return "";
+    }
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
+  }
+%>
 
 <html>
 <head>
@@ -19,12 +49,12 @@
           searchString = "";
         }
       %>
-      <p class="text-secondary mb-4">Query: <strong><%= searchString %></strong></p>
+      <p class="text-secondary mb-4">Query: <strong><%= escapeHtml(searchString) %></strong></p>
       <%
         String searchMessage = (String) request.getAttribute("searchMessage");
         if (searchMessage != null && !searchMessage.isBlank()) {
       %>
-      <div class="alert alert-warning" role="alert"><%= searchMessage %></div>
+      <div class="alert alert-warning" role="alert"><%= escapeHtml(searchMessage) %></div>
       <%
         }
 
@@ -44,7 +74,7 @@
             <%
               for (String columnName : tableColumns) {
             %>
-            <th><%= columnName %></th>
+            <th><%= escapeHtml(columnName) %></th>
             <%
               }
             %>
@@ -61,11 +91,13 @@
                 String value = rowData.getOrDefault(columnName, "");
                 if ("ID".equals(columnName) && !value.isBlank()) {
             %>
-            <td><a class="id-link" href="/patient?id=<%= value %>"><%= value %></a></td>
+            <td>
+              <a class="id-link" href="/patient?id=<%= encodeUrlParam(value) %>"><%= escapeHtml(value) %></a>
+            </td>
             <%
                 } else {
             %>
-            <td><%= value %></td>
+            <td><%= escapeHtml(value) %></td>
             <%
                 }
               }

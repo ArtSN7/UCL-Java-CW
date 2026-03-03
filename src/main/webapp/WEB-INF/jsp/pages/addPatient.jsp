@@ -88,7 +88,6 @@
 
             String inputType = inputTypeFor(columnName);
             String paramName = AppConstants.RequestParams.FIELD_PREFIX + columnName;
-            boolean isRequired = !AppConstants.CsvColumns.DEATHDATE.equals(columnName);
         %>
         <div class="col-md-6">
           <label class="form-label" for="<%= paramName %>"><%= escapeHtml(columnName) %></label>
@@ -97,7 +96,6 @@
             name="<%= paramName %>"
             type="<%= inputType %>"
             class="form-control"
-            <%= isRequired ? "required" : "" %>
           />
         </div>
         <%

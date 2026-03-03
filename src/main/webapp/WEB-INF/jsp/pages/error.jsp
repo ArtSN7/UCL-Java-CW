@@ -1,5 +1,26 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
+<%!
+  private static String escapeHtml(String value) {
+    if (value == null) {
+      return "";
+    }
+    StringBuilder escaped = new StringBuilder(value.length());
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '&' -> escaped.append("&amp;");
+        case '<' -> escaped.append("&lt;");
+        case '>' -> escaped.append("&gt;");
+        case '"' -> escaped.append("&quot;");
+        case '\'' -> escaped.append("&#39;");
+        default -> escaped.append(c);
+      }
+    }
+    return escaped.toString();
+  }
+%>
+
 <html>
 <head>
   <jsp:include page="/WEB-INF/jsp/partials/meta.jsp"/>
@@ -19,7 +40,7 @@
           errorMessage = "An unexpected error occurred.";
         }
       %>
-      <div class="alert alert-danger alert-error" role="alert"><%= errorMessage %></div>
+      <div class="alert alert-danger alert-error" role="alert"><%= escapeHtml(errorMessage) %></div>
       <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-primary rounded-pill" href="/patientList">Back to patient table</a>
         <a class="btn btn-primary rounded-pill" href="/">Go to home</a>

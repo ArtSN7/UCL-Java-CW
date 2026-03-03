@@ -1,65 +1,36 @@
-<%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.List" %>
-<%@ page import="java.util.Map" %>
+<%@ page import="java.net.URLEncoder" %>
+<%@ page import="java.nio.charset.StandardCharsets" %>
 <%@ page import="uk.ac.ucl.config.AppConstants" %>
 <%@ page import="uk.ac.ucl.model.PersonMetric" %>
 <%@ page import="uk.ac.ucl.model.StatisticsSummary" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
 <%!
-  private static String escapeJson(String value) {
+  private static String escapeHtml(String value) {
     if (value == null) {
       return "";
     }
-
     StringBuilder escaped = new StringBuilder(value.length());
-    for (int index = 0; index < value.length(); index++) {
-      char character = value.charAt(index);
-      switch (character) {
-        case '"' -> escaped.append("\\\"");
-        case '\\' -> escaped.append("\\\\");
-        case '\b' -> escaped.append("\\b");
-        case '\f' -> escaped.append("\\f");
-        case '\n' -> escaped.append("\\n");
-        case '\r' -> escaped.append("\\r");
-        case '\t' -> escaped.append("\\t");
-        case '<' -> escaped.append("\\u003c");
-        case '>' -> escaped.append("\\u003e");
-        case '&' -> escaped.append("\\u0026");
-        default -> {
-          if (character < 0x20) {
-            escaped.append(String.format("\\u%04x", (int) character));
-          } else {
-            escaped.append(character);
-          }
-        }
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '&' -> escaped.append("&amp;");
+        case '<' -> escaped.append("&lt;");
+        case '>' -> escaped.append("&gt;");
+        case '"' -> escaped.append("&quot;");
+        case '\'' -> escaped.append("&#39;");
+        default -> escaped.append(c);
       }
     }
     return escaped.toString();
   }
 
-  private static String toJsonStringArray(List<String> values) {
-    StringBuilder json = new StringBuilder("[");
-    for (int index = 0; index < values.size(); index++) {
-      if (index > 0) {
-        json.append(',');
-      }
-      json.append('"').append(escapeJson(values.get(index))).append('"');
+  private static String encodeUrlParam(String value) {
+    if (value == null) {
+      return "";
     }
-    json.append(']');
-    return json.toString();
-  }
-
-  private static String toJsonNumberArray(List<Integer> values) {
-    StringBuilder json = new StringBuilder("[");
-    for (int index = 0; index < values.size(); index++) {
-      if (index > 0) {
-        json.append(',');
-      }
-      json.append(values.get(index));
-    }
-    json.append(']');
-    return json.toString();
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 %>
 
@@ -80,39 +51,70 @@
     selectedStatus = "all";
   }
 
+  String selectedStatusLabel = (String) request.getAttribute("selectedStatusLabel");
+  if (selectedStatusLabel == null || selectedStatusLabel.isBlank()) {
+    selectedStatusLabel = "All";
+  }
+
   String cityMessage = (String) request.getAttribute("cityMessage");
+
   List<String> availableCities = (List<String>) request.getAttribute("availableCities");
+  if (availableCities == null) {
+    availableCities = List.of();
+  }
+
   List<String> patientNames = (List<String>) request.getAttribute("patientNames");
+  if (patientNames == null) {
+    patientNames = List.of();
+  }
+
   Integer resultCount = (Integer) request.getAttribute("resultCount");
   int count = resultCount == null ? 0 : resultCount;
 
-  Map<String, Integer> ageDistribution = (Map<String, Integer>) request.getAttribute("ageDistribution");
-  Map<String, Integer> ethnicityDistribution = (Map<String, Integer>) request.getAttribute("ethnicityDistribution");
-  Map<String, Integer> raceDistribution = (Map<String, Integer>) request.getAttribute("raceDistribution");
-
-  if (ageDistribution == null) {
-    ageDistribution = Map.of();
-  }
-  if (ethnicityDistribution == null) {
-    ethnicityDistribution = Map.of();
-  }
-  if (raceDistribution == null) {
-    raceDistribution = Map.of();
+  List<String> ageLabels = (List<String>) request.getAttribute("ageLabels");
+  if (ageLabels == null) {
+    ageLabels = List.of();
   }
 
-  List<String> ageLabels = new ArrayList<>(ageDistribution.keySet());
-  List<Integer> ageCounts = new ArrayList<>(ageDistribution.values());
-  List<String> ethnicityLabels = new ArrayList<>(ethnicityDistribution.keySet());
-  List<Integer> ethnicityCounts = new ArrayList<>(ethnicityDistribution.values());
-  List<String> raceLabels = new ArrayList<>(raceDistribution.keySet());
-  List<Integer> raceCounts = new ArrayList<>(raceDistribution.values());
+  List<String> ethnicityLabels = (List<String>) request.getAttribute("ethnicityLabels");
+  if (ethnicityLabels == null) {
+    ethnicityLabels = List.of();
+  }
 
-  String ageLabelsJson = toJsonStringArray(ageLabels);
-  String ageCountsJson = toJsonNumberArray(ageCounts);
-  String ethnicityLabelsJson = toJsonStringArray(ethnicityLabels);
-  String ethnicityCountsJson = toJsonNumberArray(ethnicityCounts);
-  String raceLabelsJson = toJsonStringArray(raceLabels);
-  String raceCountsJson = toJsonNumberArray(raceCounts);
+  List<String> raceLabels = (List<String>) request.getAttribute("raceLabels");
+  if (raceLabels == null) {
+    raceLabels = List.of();
+  }
+
+  String ageLabelsJson = (String) request.getAttribute("ageLabelsJson");
+  if (ageLabelsJson == null) {
+    ageLabelsJson = "[]";
+  }
+
+  String ageCountsJson = (String) request.getAttribute("ageCountsJson");
+  if (ageCountsJson == null) {
+    ageCountsJson = "[]";
+  }
+
+  String ethnicityLabelsJson = (String) request.getAttribute("ethnicityLabelsJson");
+  if (ethnicityLabelsJson == null) {
+    ethnicityLabelsJson = "[]";
+  }
+
+  String ethnicityCountsJson = (String) request.getAttribute("ethnicityCountsJson");
+  if (ethnicityCountsJson == null) {
+    ethnicityCountsJson = "[]";
+  }
+
+  String raceLabelsJson = (String) request.getAttribute("raceLabelsJson");
+  if (raceLabelsJson == null) {
+    raceLabelsJson = "[]";
+  }
+
+  String raceCountsJson = (String) request.getAttribute("raceCountsJson");
+  if (raceCountsJson == null) {
+    raceCountsJson = "[]";
+  }
 %>
 
 <html>
@@ -134,10 +136,12 @@
           <%
             if (oldestLiving != null) {
           %>
-          <p class="metric-name mb-1"><strong><%= oldestLiving.firstName() %> <%= oldestLiving.lastName() %></strong></p>
+          <p class="metric-name mb-1">
+            <strong><%= escapeHtml(oldestLiving.firstName()) %> <%= escapeHtml(oldestLiving.lastName()) %></strong>
+          </p>
           <p class="mb-1">Age: <%= oldestLiving.ageYears() %></p>
-          <p class="mb-2">DOB: <%= oldestLiving.birthDate() %></p>
-          <a class="id-link" href="/patient?id=<%= oldestLiving.id() %>">View patient</a>
+          <p class="mb-2">DOB: <%= escapeHtml(oldestLiving.birthDate()) %></p>
+          <a class="id-link" href="/patient?id=<%= encodeUrlParam(oldestLiving.id()) %>">View patient</a>
           <%
             } else {
           %>
@@ -152,10 +156,12 @@
           <%
             if (youngestLiving != null) {
           %>
-          <p class="metric-name mb-1"><strong><%= youngestLiving.firstName() %> <%= youngestLiving.lastName() %></strong></p>
+          <p class="metric-name mb-1">
+            <strong><%= escapeHtml(youngestLiving.firstName()) %> <%= escapeHtml(youngestLiving.lastName()) %></strong>
+          </p>
           <p class="mb-1">Age: <%= youngestLiving.ageYears() %></p>
-          <p class="mb-2">DOB: <%= youngestLiving.birthDate() %></p>
-          <a class="id-link" href="/patient?id=<%= youngestLiving.id() %>">View patient</a>
+          <p class="mb-2">DOB: <%= escapeHtml(youngestLiving.birthDate()) %></p>
+          <a class="id-link" href="/patient?id=<%= encodeUrlParam(youngestLiving.id()) %>">View patient</a>
           <%
             } else {
           %>
@@ -170,10 +176,12 @@
           <%
             if (oldestOverall != null) {
           %>
-          <p class="metric-name mb-1"><strong><%= oldestOverall.firstName() %> <%= oldestOverall.lastName() %></strong></p>
+          <p class="metric-name mb-1">
+            <strong><%= escapeHtml(oldestOverall.firstName()) %> <%= escapeHtml(oldestOverall.lastName()) %></strong>
+          </p>
           <p class="mb-1">Age: <%= oldestOverall.ageYears() %></p>
-          <p class="mb-2">DOB: <%= oldestOverall.birthDate() %></p>
-          <a class="id-link" href="/patient?id=<%= oldestOverall.id() %>">View patient</a>
+          <p class="mb-2">DOB: <%= escapeHtml(oldestOverall.birthDate()) %></p>
+          <a class="id-link" href="/patient?id=<%= encodeUrlParam(oldestOverall.id()) %>">View patient</a>
           <%
             } else {
           %>
@@ -188,10 +196,12 @@
           <%
             if (youngestOverall != null) {
           %>
-          <p class="metric-name mb-1"><strong><%= youngestOverall.firstName() %> <%= youngestOverall.lastName() %></strong></p>
+          <p class="metric-name mb-1">
+            <strong><%= escapeHtml(youngestOverall.firstName()) %> <%= escapeHtml(youngestOverall.lastName()) %></strong>
+          </p>
           <p class="mb-1">Age: <%= youngestOverall.ageYears() %></p>
-          <p class="mb-2">DOB: <%= youngestOverall.birthDate() %></p>
-          <a class="id-link" href="/patient?id=<%= youngestOverall.id() %>">View patient</a>
+          <p class="mb-2">DOB: <%= escapeHtml(youngestOverall.birthDate()) %></p>
+          <a class="id-link" href="/patient?id=<%= encodeUrlParam(youngestOverall.id()) %>">View patient</a>
           <%
             } else {
           %>
@@ -229,13 +239,11 @@
           <select id="city" name="city" class="form-select">
             <option value="">-- Select city --</option>
             <%
-              if (availableCities != null) {
-                for (String city : availableCities) {
-                  String selected = city.equals(selectedCity) ? "selected" : "";
+              for (String city : availableCities) {
+                String selected = city.equals(selectedCity) ? "selected" : "";
             %>
-            <option value="<%= city %>" <%= selected %>><%= city %></option>
+            <option value="<%= escapeHtml(city) %>" <%= selected %>><%= escapeHtml(city) %></option>
             <%
-                }
               }
             %>
           </select>
@@ -258,27 +266,27 @@
       <%
         if (selectedCity.isBlank()) {
       %>
-      <p class="text-secondary mb-0"><%= AppConstants.Messages.CITY_REQUIRED %></p>
+      <p class="text-secondary mb-0"><%= escapeHtml(AppConstants.Messages.CITY_REQUIRED) %></p>
       <%
         } else if (cityMessage != null && !cityMessage.isBlank()) {
       %>
-      <div class="alert alert-warning mb-0" role="alert"><%= cityMessage %></div>
+      <div class="alert alert-warning mb-0" role="alert"><%= escapeHtml(cityMessage) %></div>
       <%
         } else {
       %>
       <p class="mb-3">
-        <strong><%= count %></strong> people in <strong><%= selectedCity %></strong> with status
-        <strong><%= selectedStatus %></strong>.
+        <strong><%= count %></strong> people in <strong><%= escapeHtml(selectedCity) %></strong> with status
+        <strong><%= escapeHtml(selectedStatusLabel) %></strong>.
       </p>
 
       <%
-          if (patientNames != null && !patientNames.isEmpty()) {
+          if (!patientNames.isEmpty()) {
       %>
       <ul class="list-group names-list">
         <%
           for (String patientName : patientNames) {
         %>
-        <li class="list-group-item"><%= patientName %></li>
+        <li class="list-group-item"><%= escapeHtml(patientName) %></li>
         <%
           }
         %>

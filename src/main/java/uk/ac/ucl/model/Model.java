@@ -31,6 +31,7 @@ public class Model {
   private final List<String> tableColumns;
   private final Path csvPath;
   private final DataLoader dataLoader;
+  private final JSONWriter jsonWriter;
 
   private Model(Path csvPath) throws IOException {
     if (csvPath == null) {
@@ -49,6 +50,7 @@ public class Model {
     }
 
     this.dataLoader = new DataLoader();
+    this.jsonWriter = new JSONWriter();
     DataFrame loadedFrame;
     try {
       loadedFrame = dataLoader.loadCsv(normalizedPath);
@@ -305,6 +307,17 @@ public class Model {
     return buildCategoryDistribution("RACE");
   }
 
+  public synchronized void exportPatientsToJson(Path outputPath) throws IOException {
+    Path normalizedPath = outputPath == null ? null : outputPath.toAbsolutePath().normalize();
+    if (normalizedPath == null) {
+      throw new IllegalArgumentException("Output path cannot be null.");
+    }
+
+    // Export a stable snapshot so in-memory edits do not race with file generation.
+    DataFrame snapshot = dataFrame.deepCopy();
+    jsonWriter.writeJson(normalizedPath, snapshot);
+  }
+
   private void persistAndSwap(DataFrame updatedDataFrame) throws IOException {
     dataLoader.saveCsv(csvPath, updatedDataFrame);
     dataFrame = updatedDataFrame;
@@ -392,10 +405,6 @@ public class Model {
       }
 
       String value = normalizeFieldValue(fields.get(columnName));
-      if (value.isBlank() && !AppConstants.CsvColumns.DEATHDATE.equals(columnName)) {
-        throw new IllegalArgumentException(AppConstants.Messages.FIELD_REQUIRED_PREFIX + columnName);
-      }
-
       row.put(columnName, value);
     }
 
