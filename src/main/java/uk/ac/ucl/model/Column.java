@@ -52,6 +52,14 @@ public class Column {
         rows.add(normalizeValue(value));
     }
 
+    public void removeRowValue(int row) {
+        rows.remove(row);
+    }
+
+    public Column deepCopy() {
+        return new Column(name, rows);
+    }
+
     private static String normalizeValue(String value) {
         return value == null ? "" : value.trim();
     }

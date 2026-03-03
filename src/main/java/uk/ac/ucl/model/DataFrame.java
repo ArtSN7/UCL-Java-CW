@@ -70,6 +70,44 @@ public class DataFrame {
         findColumn(columnName).addRowValue(value);
     }
 
+    public DataFrame deepCopy() {
+        DataFrame copy = new DataFrame();
+        for (Column column : columns) {
+            copy.addColumn(column.deepCopy());
+        }
+        return copy;
+    }
+
+    public void appendRow(Map<String, String> rowValuesByColumn) {
+        Map<String, String> values = Objects.requireNonNull(rowValuesByColumn, "Row values cannot be null.");
+        for (Column column : columns) {
+            String columnName = column.getName();
+            if (!values.containsKey(columnName)) {
+                throw new IllegalArgumentException("Missing value for column: " + columnName);
+            }
+            column.addRowValue(values.get(columnName));
+        }
+    }
+
+    public void updateRow(int rowIndex, Map<String, String> rowValuesByColumn) {
+        validateRowIndex(rowIndex);
+        Map<String, String> values = Objects.requireNonNull(rowValuesByColumn, "Row values cannot be null.");
+        for (Column column : columns) {
+            String columnName = column.getName();
+            if (!values.containsKey(columnName)) {
+                throw new IllegalArgumentException("Missing value for column: " + columnName);
+            }
+            column.setRowValue(rowIndex, values.get(columnName));
+        }
+    }
+
+    public void removeRow(int rowIndex) {
+        validateRowIndex(rowIndex);
+        for (Column column : columns) {
+            column.removeRowValue(rowIndex);
+        }
+    }
+
     public boolean hasColumn(String columnName) {
         String normalizedName = normalizeColumnName(columnName);
         return columnsByName.containsKey(normalizedName);
@@ -105,6 +143,16 @@ public class DataFrame {
             details.put(column.getName(), value == null ? "" : value);
         }
         return details;
+    }
+
+    public List<String> getRowValuesInColumnOrder(int row) {
+        validateRowIndex(row);
+        List<String> rowValues = new ArrayList<>(columns.size());
+        for (Column column : columns) {
+            String value = column.getRowValue(row);
+            rowValues.add(value == null ? "" : value);
+        }
+        return rowValues;
     }
 
     public int findRowByValue(String columnName, String searchValue) {

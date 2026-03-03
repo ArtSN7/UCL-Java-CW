@@ -33,6 +33,20 @@ body {
   background: #ffffff;
 }
 
+.crud-form .form-label {
+  font-weight: 600;
+  color: #2a4250;
+}
+
+.crud-form .form-control {
+  border-color: #c9dee9;
+}
+
+.crud-form .form-control:focus {
+  border-color: #5ea7c6;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 140, 0.16);
+}
+
 .table > :not(caption) > * > * {
   padding: 0.65rem 0.75rem;
 }

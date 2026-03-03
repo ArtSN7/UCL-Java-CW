@@ -29,6 +29,7 @@ public class ViewPatientListServlet extends HttpServlet {
             List<Map<String, String>> tableRows = model.getPatientTableRows();
             request.setAttribute("tableColumns", tableColumns);
             request.setAttribute("tableRows", tableRows);
+            attachFlashMessage(request);
             LOGGER.fine(() -> "Prepared /patientList response with " + tableRows.size() + " rows.");
             ServletContext context = getServletContext();
             RequestDispatcher dispatch = context.getRequestDispatcher(AppConstants.Routes.PATIENT_LIST_JSP);
@@ -56,5 +57,17 @@ public class ViewPatientListServlet extends HttpServlet {
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         doGet(request, response);
+    }
+
+    private static void attachFlashMessage(HttpServletRequest request) {
+        String message = request.getParameter(AppConstants.RequestParams.MESSAGE);
+        if (message != null && !message.isBlank()) {
+            request.setAttribute("message", message.trim());
+        }
+
+        String error = request.getParameter(AppConstants.RequestParams.ERROR);
+        if (error != null && !error.isBlank()) {
+            request.setAttribute("error", error.trim());
+        }
     }
 }

@@ -12,20 +12,24 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public class Model {
   private static final Logger LOGGER = Logger.getLogger(Model.class.getName());
   private static Model instance;
 
-  private final DataFrame dataFrame;
+  private DataFrame dataFrame;
   private final List<String> tableColumns;
+  private final Path csvPath;
+  private final DataLoader dataLoader;
 
   private Model(Path csvPath) throws IOException {
     if (csvPath == null) {
@@ -43,10 +47,10 @@ public class Model {
       throw new IOException("CSV file is not readable: " + normalizedPath);
     }
 
-    DataLoader loader = new DataLoader();
+    this.dataLoader = new DataLoader();
     DataFrame loadedFrame;
     try {
-      loadedFrame = loader.loadCsv(normalizedPath);
+      loadedFrame = dataLoader.loadCsv(normalizedPath);
     } catch (RuntimeException exception) {
       throw new IOException("Failed to parse CSV file: " + normalizedPath, exception);
     }
@@ -59,6 +63,7 @@ public class Model {
     }
 
     this.dataFrame = loadedFrame;
+    this.csvPath = normalizedPath;
     this.tableColumns = loadedFrame.normalizeSelectedColumns(AppConstants.CsvColumns.TABLE_COLUMNS);
     LOGGER.info(() -> "Model loaded from " + normalizedPath + " with "
       + loadedFrame.getRowCount() + " rows.");
@@ -79,17 +84,16 @@ public class Model {
     return tableColumns;
   }
 
+  public List<String> getAllColumns() {
+    return dataFrame.getColumnNames();
+  }
+
   public List<Map<String, String>> getPatientTableRows() {
     return dataFrame.getRowsForColumns(tableColumns);
   }
 
   public Map<String, String> getPatientDetails(String patientId) {
-    if (patientId == null || patientId.isBlank()) {
-      LOGGER.warning("Patient detail request had a blank id.");
-      throw new IllegalArgumentException("Patient id cannot be blank.");
-    }
-
-    String normalizedId = patientId.trim();
+    String normalizedId = normalizePatientId(patientId);
     int row = dataFrame.findRowByValue(AppConstants.CsvColumns.ID, normalizedId);
     if (row < 0) {
       LOGGER.warning(() -> "Patient id not found: " + normalizedId + ".");
@@ -97,6 +101,51 @@ public class Model {
     }
 
     return dataFrame.getRecordDetails(row);
+  }
+
+  public synchronized String addPatient(Map<String, String> fields) throws IOException {
+    DataFrame updatedDataFrame = dataFrame.deepCopy();
+    List<String> columns = updatedDataFrame.getColumnNames();
+
+    String patientId = generateUniquePatientId(updatedDataFrame);
+    Map<String, String> newRow = buildValidatedRow(fields, columns, patientId);
+    updatedDataFrame.appendRow(newRow);
+
+    persistAndSwap(updatedDataFrame);
+    LOGGER.info(() -> "Added patient " + patientId + ".");
+    return patientId;
+  }
+
+  public synchronized void updatePatient(String patientId, Map<String, String> fields) throws IOException {
+    String normalizedId = normalizePatientId(patientId);
+    int rowIndex = dataFrame.findRowByValue(AppConstants.CsvColumns.ID, normalizedId);
+    if (rowIndex < 0) {
+      LOGGER.warning(() -> "Cannot update unknown patient id: " + normalizedId + ".");
+      throw new NoSuchElementException("Unknown patient id: " + normalizedId);
+    }
+
+    DataFrame updatedDataFrame = dataFrame.deepCopy();
+    List<String> columns = updatedDataFrame.getColumnNames();
+    Map<String, String> updatedRow = buildValidatedRow(fields, columns, normalizedId);
+    updatedDataFrame.updateRow(rowIndex, updatedRow);
+
+    persistAndSwap(updatedDataFrame);
+    LOGGER.info(() -> "Updated patient " + normalizedId + ".");
+  }
+
+  public synchronized void deletePatient(String patientId) throws IOException {
+    String normalizedId = normalizePatientId(patientId);
+    int rowIndex = dataFrame.findRowByValue(AppConstants.CsvColumns.ID, normalizedId);
+    if (rowIndex < 0) {
+      LOGGER.warning(() -> "Cannot delete unknown patient id: " + normalizedId + ".");
+      throw new NoSuchElementException("Unknown patient id: " + normalizedId);
+    }
+
+    DataFrame updatedDataFrame = dataFrame.deepCopy();
+    updatedDataFrame.removeRow(rowIndex);
+
+    persistAndSwap(updatedDataFrame);
+    LOGGER.info(() -> "Deleted patient " + normalizedId + ".");
   }
 
   public List<Map<String, String>> searchPatients(String searchString) {
@@ -223,6 +272,62 @@ public class Model {
     return names.stream()
       .map(NameEntry::displayName)
       .toList();
+  }
+
+  private void persistAndSwap(DataFrame updatedDataFrame) throws IOException {
+    dataLoader.saveCsv(csvPath, updatedDataFrame);
+    dataFrame = updatedDataFrame;
+  }
+
+  private static String generateUniquePatientId(DataFrame dataFrame) {
+    String patientId = UUID.randomUUID().toString();
+    while (dataFrame.findRowByValue(AppConstants.CsvColumns.ID, patientId) >= 0) {
+      patientId = UUID.randomUUID().toString();
+    }
+    return patientId;
+  }
+
+  private static Map<String, String> buildValidatedRow(
+    Map<String, String> fields,
+    List<String> columns,
+    String patientId
+  ) {
+    if (fields == null) {
+      throw new IllegalArgumentException("Patient fields cannot be null.");
+    }
+
+    Map<String, String> row = new LinkedHashMap<>();
+    for (String columnName : columns) {
+      if (AppConstants.CsvColumns.ID.equals(columnName)) {
+        row.put(columnName, patientId);
+        continue;
+      }
+
+      if (!fields.containsKey(columnName)) {
+        throw new IllegalArgumentException(AppConstants.Messages.FIELD_REQUIRED_PREFIX + columnName);
+      }
+
+      String value = normalizeFieldValue(fields.get(columnName));
+      if (value.isBlank() && !AppConstants.CsvColumns.DEATHDATE.equals(columnName)) {
+        throw new IllegalArgumentException(AppConstants.Messages.FIELD_REQUIRED_PREFIX + columnName);
+      }
+
+      row.put(columnName, value);
+    }
+
+    return row;
+  }
+
+  private static String normalizePatientId(String patientId) {
+    if (patientId == null || patientId.isBlank()) {
+      LOGGER.warning("Patient request had a blank id.");
+      throw new IllegalArgumentException("Patient id cannot be blank.");
+    }
+    return patientId.trim();
+  }
+
+  private static String normalizeFieldValue(String value) {
+    return value == null ? "" : value.trim();
   }
 
   private static boolean recordMatchesKeywords(Map<String, String> record, List<String> keywords) {

@@ -11,6 +11,7 @@ import uk.ac.ucl.config.AppConstants;
 import uk.ac.ucl.model.Model;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.logging.Level;
@@ -28,8 +29,11 @@ public class ViewPatientServlet extends HttpServlet {
       LOGGER.fine(() -> "Handling request for /patient with id='" + patientId + "'.");
       Model model = Model.getInstance();
       Map<String, String> patientDetails = model.getPatientDetails(patientId);
+      List<String> allColumns = model.getAllColumns();
 
       request.setAttribute("patientDetails", patientDetails);
+      request.setAttribute("allColumns", allColumns);
+      attachFlashMessage(request);
       forwardTo(AppConstants.Routes.PATIENT_JSP, request, response);
     } catch (IllegalArgumentException e) {
       LOGGER.log(Level.WARNING, "Invalid patient id supplied for /patient.", e);
@@ -71,5 +75,17 @@ public class ViewPatientServlet extends HttpServlet {
     ServletContext context = getServletContext();
     RequestDispatcher dispatch = context.getRequestDispatcher(path);
     dispatch.forward(request, response);
+  }
+
+  private static void attachFlashMessage(HttpServletRequest request) {
+    String message = request.getParameter(AppConstants.RequestParams.MESSAGE);
+    if (message != null && !message.isBlank()) {
+      request.setAttribute("message", message.trim());
+    }
+
+    String error = request.getParameter(AppConstants.RequestParams.ERROR);
+    if (error != null && !error.isBlank()) {
+      request.setAttribute("error", error.trim());
+    }
   }
 }
