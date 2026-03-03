@@ -14,6 +14,7 @@ import uk.ac.ucl.model.StatisticsSummary;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,6 +34,9 @@ public class ViewStatisticsServlet extends HttpServlet {
       Model model = Model.getInstance();
       StatisticsSummary statisticsSummary = model.getStatisticsSummary();
       List<String> availableCities = model.getAvailableCities();
+      Map<String, Integer> ageDistribution = model.getAgeDistribution();
+      Map<String, Integer> ethnicityDistribution = model.getEthnicityDistribution();
+      Map<String, Integer> raceDistribution = model.getRaceDistribution();
 
       String cityMessage = null;
       List<String> patientNames = List.of();
@@ -53,6 +57,9 @@ public class ViewStatisticsServlet extends HttpServlet {
       request.setAttribute("patientNames", patientNames);
       request.setAttribute("resultCount", patientNames.size());
       request.setAttribute("cityMessage", cityMessage);
+      request.setAttribute("ageDistribution", ageDistribution);
+      request.setAttribute("ethnicityDistribution", ethnicityDistribution);
+      request.setAttribute("raceDistribution", raceDistribution);
 
       forwardTo(AppConstants.Routes.STATISTICS_JSP, request, response);
     } catch (IOException exception) {

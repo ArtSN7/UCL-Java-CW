@@ -116,6 +116,28 @@ body {
   overflow: auto;
 }
 
+.chart-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.chart-card {
+  border: 1px solid #d8e7ef;
+  background: #ffffff;
+  border-radius: 0.85rem;
+  padding: 0.95rem;
+}
+
+.chart-card-wide {
+  grid-column: 1 / -1;
+}
+
+.chart-canvas-wrap {
+  position: relative;
+  min-height: 280px;
+}
+
 .page-enter {
   animation: pageFadeIn 340ms ease both;
 }

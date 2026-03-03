@@ -12,6 +12,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -278,9 +279,88 @@ public class Model {
       .toList();
   }
 
+  public Map<String, Integer> getAgeDistribution() {
+    Map<Integer, Integer> ageCounts = new java.util.TreeMap<>();
+
+    for (int row = 0; row < dataFrame.getRowCount(); row++) {
+      PersonMetric metric = buildPersonMetric(row);
+      if (metric == null) {
+        continue;
+      }
+      ageCounts.merge(metric.ageYears(), 1, Integer::sum);
+    }
+
+    Map<String, Integer> distribution = new LinkedHashMap<>();
+    for (Map.Entry<Integer, Integer> entry : ageCounts.entrySet()) {
+      distribution.put(String.valueOf(entry.getKey()), entry.getValue());
+    }
+    return distribution;
+  }
+
+  public Map<String, Integer> getEthnicityDistribution() {
+    return buildCategoryDistribution("ETHNICITY");
+  }
+
+  public Map<String, Integer> getRaceDistribution() {
+    return buildCategoryDistribution("RACE");
+  }
+
   private void persistAndSwap(DataFrame updatedDataFrame) throws IOException {
     dataLoader.saveCsv(csvPath, updatedDataFrame);
     dataFrame = updatedDataFrame;
+  }
+
+  private Map<String, Integer> buildCategoryDistribution(String columnName) {
+    if (!dataFrame.hasColumn(columnName)) {
+      return Map.of();
+    }
+
+    Map<String, Integer> countsByKey = new HashMap<>();
+    Map<String, String> labelsByKey = new HashMap<>();
+
+    for (int row = 0; row < dataFrame.getRowCount(); row++) {
+      String rawValue = dataFrame.getValueOrEmpty(columnName, row).trim();
+      String normalizedKey = rawValue.isBlank() ? "unknown" : rawValue.toLowerCase(Locale.ROOT);
+      countsByKey.merge(normalizedKey, 1, Integer::sum);
+      labelsByKey.putIfAbsent(normalizedKey, toDisplayCategory(rawValue));
+    }
+
+    return countsByKey.entrySet().stream()
+      .sorted(Comparator
+        .<Map.Entry<String, Integer>>comparingInt(Map.Entry::getValue)
+        .reversed()
+        .thenComparing(entry -> labelsByKey.get(entry.getKey())))
+      .collect(
+        LinkedHashMap::new,
+        (distribution, entry) -> distribution.put(labelsByKey.get(entry.getKey()), entry.getValue()),
+        LinkedHashMap::putAll
+      );
+  }
+
+  private static String toDisplayCategory(String rawValue) {
+    if (rawValue == null || rawValue.isBlank()) {
+      return "Unknown";
+    }
+
+    String[] words = rawValue.trim().toLowerCase(Locale.ROOT).split("\\s+");
+    StringBuilder label = new StringBuilder();
+
+    for (int index = 0; index < words.length; index++) {
+      String word = words[index];
+      if (word.isBlank()) {
+        continue;
+      }
+
+      if (index > 0) {
+        label.append(' ');
+      }
+      label.append(Character.toUpperCase(word.charAt(0)));
+      if (word.length() > 1) {
+        label.append(word.substring(1));
+      }
+    }
+
+    return label.length() == 0 ? "Unknown" : label.toString();
   }
 
   private static String generateUniquePatientId(DataFrame dataFrame) {
